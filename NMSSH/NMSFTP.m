@@ -19,7 +19,7 @@
     NMSFTP *sftp = [[NMSFTP alloc] initWithSession:session];
     [sftp connect];
 
-    return sftp;
+    return [sftp autorelease];
 }
 
 - (instancetype)initWithSession:(NMSSHSession *)session {
@@ -133,6 +133,7 @@
 
         if (rc > 0) {
             NSString *fileName = [[NSString alloc] initWithBytes:buffer length:rc encoding:NSUTF8StringEncoding];
+            [fileName autorelease];
             if (![ignoredFiles containsObject:fileName]) {
                 // Append a "/" at the end of all directories
                 if (LIBSSH2_SFTP_S_ISDIR(fileAttributes.permissions)) {
@@ -142,6 +143,7 @@
                 NMSFTPFile *file = [[NMSFTPFile alloc] initWithFilename:fileName];
                 [file populateValuesFromSFTPAttributes:fileAttributes];
                 [contents addObject:file];
+                [file release];
             }
         }
     } while (rc > 0);
@@ -183,7 +185,7 @@
     NMSFTPFile *file = [[NMSFTPFile alloc] initWithFilename:path.lastPathComponent];
     [file populateValuesFromSFTPAttributes:fileAttributes];
 
-    return file;
+    return [file autorelease];
 }
 
 - (LIBSSH2_SFTP_HANDLE *)openFileAtPath:(NSString *)path flags:(unsigned long)flags mode:(long)mode {
@@ -252,6 +254,7 @@
         got += rc;
         if (progress && !progress((NSUInteger)got, (NSUInteger)[file.fileSize integerValue])) {
             libssh2_sftp_close(handle);
+            [data release];
             return nil;
         }
     }
@@ -259,10 +262,11 @@
     libssh2_sftp_close(handle);
 
     if (rc < 0) {
+        [data release];
         return nil;
     }
 
-    return [data copy];
+    return [data autorelease];
 }
 
 - (BOOL)writeContents:(NSData *)contents toFileAtPath:(NSString *)path {
@@ -410,6 +414,8 @@
         if (progress && !progress((NSUInteger)copied, (NSUInteger)[file.fileSize integerValue])) {
             libssh2_sftp_close(fromHandle);
             libssh2_sftp_close(toHandle);
+
+            [data release];
             return NO;
         }
     }
@@ -417,7 +423,20 @@
     libssh2_sftp_close(fromHandle);
     libssh2_sftp_close(toHandle);
     
+    [data release];
     return YES;
 }
 
+// -----------------------------------------------------------------------------
+#pragma mark - DEALLOC
+// -----------------------------------------------------------------------------
+
+- (void)dealloc
+{
+    self.session = nil;
+    [super dealloc];
+}
+
 @end
+
+

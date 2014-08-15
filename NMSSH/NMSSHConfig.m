@@ -22,7 +22,7 @@ typedef enum {
 @implementation NMSSHConfig
 
 + (instancetype)configFromFile:(NSString *)filename {
-  return [[self alloc] initWithFile:filename];
+  return [[[self alloc] initWithFile:filename] autorelease];
 }
 
 - (instancetype)initWithFile:(NSString *)filename {
@@ -34,17 +34,29 @@ typedef enum {
 
 - (instancetype)initWithString:(NSString *)contents {
     if (contents == nil) {
+        [self autorelease];
         return nil;
     }
 
     if ((self = [super init])) {
         [self setHostConfigs:[self arrayFromString:contents]];
         if (_hostConfigs == nil) {
+            [self autorelease];
             return nil;
         }
     }
 
     return self;
+}
+
+// -----------------------------------------------------------------------------
+#pragma mark - DEALLOC
+// -----------------------------------------------------------------------------
+
+- (void)dealloc
+{
+    self.hostConfigs = nil;
+    [super dealloc];
 }
 
 // -----------------------------------------------------------------------------
@@ -65,7 +77,7 @@ typedef enum {
         [self parseLine:line intoArray:array];
     }
 
-    return [array copy];
+    return array;
 }
 
 - (void)parseLine:(NSString *)line intoArray:(NSMutableArray *)array {
@@ -122,6 +134,8 @@ typedef enum {
     if ([config.hostPatterns count] > 0) {
         [array addObject:config];
     }
+    
+    [config release];
 }
 
 - (void)parseHostNameWithArguments:(NSString *)arguments
@@ -188,10 +202,10 @@ typedef enum {
 }
 
 - (NSCharacterSet *)blanksCharacterSet {
-    NSMutableCharacterSet *blanksCharacterSet = [[NSMutableCharacterSet alloc] init];
+    NSMutableCharacterSet *blanksCharacterSet = [NSMutableCharacterSet new];
     [blanksCharacterSet addCharactersInRange:NSMakeRange(' ', 1)];
     [blanksCharacterSet addCharactersInRange:NSMakeRange('\t', 1)];
-    return blanksCharacterSet;
+    return [blanksCharacterSet autorelease];
 }
 
 // Returns the range of a quoted substring in line starting with a quote at location. If there is
@@ -231,7 +245,7 @@ typedef enum {
 
 - (NSRange)rangeOfFirstTokenInString:(NSString *)line suffix:(NSString **)suffixPtr {
     NSCharacterSet *blanksCharacterSet = [self blanksCharacterSet];
-    NSMutableCharacterSet *nonBlanksCharacterSet = [blanksCharacterSet mutableCopy];
+    NSMutableCharacterSet *nonBlanksCharacterSet = [[blanksCharacterSet mutableCopy] autorelease];
     [nonBlanksCharacterSet invert];
 
     NSRange rangeOfFirstNonBlank = [line rangeOfCharacterFromSet:nonBlanksCharacterSet];
@@ -294,6 +308,8 @@ typedef enum {
         }
     }
 
+    [combinedConfig autorelease];
+    
     return foundAny ? combinedConfig : nil;
 }
 

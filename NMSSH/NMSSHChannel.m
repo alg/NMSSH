@@ -141,6 +141,16 @@
 }
 
 // -----------------------------------------------------------------------------
+#pragma mark - DEALLOC
+// -----------------------------------------------------------------------------
+
+- (void)dealloc
+{
+    self.session = nil;
+    [super dealloc];
+}
+
+// -----------------------------------------------------------------------------
 #pragma mark - SHELL COMMAND EXECUTION
 // -----------------------------------------------------------------------------
 
@@ -223,7 +233,9 @@
             rc = libssh2_channel_read(self.channel, buffer, (ssize_t)sizeof(buffer));
 
             if (rc > 0) {
-                [response appendFormat:@"%@", [[NSString alloc] initWithBytes:buffer length:rc encoding:NSUTF8StringEncoding]];
+                NSString *chunk = [[NSString alloc] initWithBytes:buffer length:rc encoding:NSUTF8StringEncoding];
+                [response appendFormat:@"%@", chunk];
+                [chunk release];
             }
 
             // Store all errors that might occur
@@ -231,13 +243,17 @@
                 if (error) {
                     ssize_t erc = libssh2_channel_read_stderr(self.channel, errorBuffer, (ssize_t)sizeof(errorBuffer));
 
-                    NSString *desc = [[NSString alloc] initWithBytes:errorBuffer length:erc encoding:NSUTF8StringEncoding];
-                    if (!desc) {
-                        desc = @"An unspecified error occurred";
+                    NSString *desc;
+                    if (erc > 0) {
+                        desc = [[NSString alloc] initWithBytes:errorBuffer length:erc encoding:NSUTF8StringEncoding];
+                    } else {
+                        desc = [[NSString alloc] initWithString:@"An unspecified error occurred"];
                     }
 
                     [userInfo setObject:desc forKey:NSLocalizedDescriptionKey];
                     [userInfo setObject:[NSString stringWithFormat:@"%zi", erc] forKey:NSLocalizedFailureReasonErrorKey];
+                    
+                    [desc release];
 
                     *error = [NSError errorWithDomain:@"NMSSH"
                                                  code:NMSSHChannelExecutionError
@@ -247,11 +263,14 @@
 
             if (libssh2_channel_eof(self.channel) == 1 || rc == 0) {
                 while ((rc  = libssh2_channel_read(self.channel, buffer, (ssize_t)sizeof(buffer))) > 0) {
-                    [response appendFormat:@"%@", [[NSString alloc] initWithBytes:buffer length:rc encoding:NSUTF8StringEncoding] ];
+                    NSString *chunk = [[NSString alloc] initWithBytes:buffer length:rc encoding:NSUTF8StringEncoding];
+                    [response appendFormat:@"%@", chunk];
+                    [chunk release];
                 }
 
-                [self setLastResponse:[response copy]];
+                [self setLastResponse:[[response copy] autorelease]];
                 [self closeChannel];
+                [response release];
 
                 return self.lastResponse;
             }
@@ -269,11 +288,14 @@
                 }
 
                 while ((rc  = libssh2_channel_read(self.channel, buffer, (ssize_t)sizeof(buffer))) > 0) {
-                    [response appendFormat:@"%@", [[NSString alloc] initWithBytes:buffer length:rc encoding:NSUTF8StringEncoding] ];
+                    NSString *chunk = [[NSString alloc] initWithBytes:buffer length:rc encoding:NSUTF8StringEncoding];
+                    [response appendFormat:@"%@", chunk];
+                    [chunk release];
                 }
 
-                [self setLastResponse:[response copy]];
+                [self setLastResponse:[[response copy] autorelease]];
                 [self closeChannel];
+                [response release];
 
                 return self.lastResponse;
             }
@@ -286,6 +308,8 @@
         waitsocket(CFSocketGetNative([self.session socket]), self.session.rawSession);
     }
 
+    [response release];
+    
     // If we've got this far, it means fetching execution response failed
     if (error) {
         [userInfo setObject:[[self.session lastError] localizedDescription] forKey:NSLocalizedDescriptionKey];
@@ -344,9 +368,9 @@
                 return;
             }
             else if (rc > 0) {
-                NSData *data = [[NSData alloc] initWithBytes:buffer length:rc];
+                NSData *data = [NSData dataWithBytes:buffer length:rc];
                 NSString *response = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-                [self setLastResponse:[response copy]];
+                [self setLastResponse:[[response copy] autorelease]];
 
                 if (response && self.delegate && [self.delegate respondsToSelector:@selector(channel:didReadData:)]) {
                     [self.delegate channel:self didReadData:self.lastResponse];
@@ -355,9 +379,11 @@
                 if (self.delegate && [self.delegate respondsToSelector:@selector(channel:didReadRawData:)]) {
                     [self.delegate channel:self didReadRawData:data];
                 }
+
+                [response release];
             }
             else if (erc > 0) {
-                NSData *data = [[NSData alloc] initWithBytes:buffer length:erc];
+                NSData *data = [NSData dataWithBytes:buffer length:erc];
                 NSString *response = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
 
                 if (response && self.delegate && [self.delegate respondsToSelector:@selector(channel:didReadError:)]) {
@@ -367,6 +393,8 @@
                 if (self.delegate && [self.delegate respondsToSelector:@selector(channel:didReadRawError:)]) {
                     [self.delegate channel:self didReadRawError:data];
                 }
+                
+                [response release];
             }
             else if (libssh2_channel_eof(self.channel) == 1) {
                 NMSSHLogVerbose(@"Host EOF received, closing channel...");
@@ -478,6 +506,7 @@
                                          code:NMSSHChannelWriteError
                                      userInfo:@{ NSLocalizedDescriptionKey : [[self.session lastError] localizedDescription],
                                                  @"command"                : command }];
+            [command release];
         }
     }
 

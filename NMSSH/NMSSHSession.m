@@ -31,7 +31,7 @@
                                                    andUsername:username];
     [session connect];
 
-    return session;
+    return [session autorelease];
 }
 
 + (instancetype)connectToHost:(NSString *)host withUsername:(NSString *)username {
@@ -39,7 +39,7 @@
                                                    andUsername:username];
     [session connect];
 
-    return session;
+    return [session autorelease];
 }
 
 - (instancetype)initWithHost:(NSString *)host port:(NSInteger)port andUsername:(NSString *)username {
@@ -103,6 +103,23 @@
 }
 
 // -----------------------------------------------------------------------------
+#pragma mark - DEALLOC
+// -----------------------------------------------------------------------------
+
+- (void)dealloc
+{
+    self.timeout = nil;
+    self.banner = nil;
+    self.host = nil;
+    self.username = nil;
+    self.channel = nil;
+    self.sftp = nil;
+    self.port = nil;
+    self.hostConfig = nil;
+    [super dealloc];
+}
+
+// -----------------------------------------------------------------------------
 #pragma mark - CONNECTION SETTINGS
 // -----------------------------------------------------------------------------
 
@@ -128,6 +145,8 @@
 
         if (CFHostStartInfoResolution(host, kCFHostAddresses, &error)) {
             addresses = (__bridge NSArray *)(CFHostGetAddressing(host, NULL));
+            CFRetain(addresses);
+            CFAutorelease(addresses);
         }
         else {
             NMSSHLogError(@"Unable to resolve host %@", address);
@@ -210,7 +229,7 @@
     // Try to establish a connection to the server
     NSUInteger index = -1;
     NSInteger port = [self.port integerValue];
-    NSArray *addresses = [self hostIPAddresses];
+    NSArray *addresses = [[self hostIPAddresses] retain];
     CFSocketError error = 1;
     struct sockaddr_storage *address = NULL;
 

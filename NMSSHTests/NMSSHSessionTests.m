@@ -32,7 +32,7 @@
 
 - (void)tearDown {
     if (session) {
-        [session disconnect];
+        //[session disconnect];
         session = nil;
     }
 }

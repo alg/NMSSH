@@ -42,6 +42,7 @@ typedef NS_OPTIONS(NSUInteger, NMSSHLogFlag) {
 #if !(OS_OBJECT_USE_OBJC)
 - (void)dealloc {
     dispatch_release(self.loggerQueue);
+    [super dealloc];
 }
 #endif
 

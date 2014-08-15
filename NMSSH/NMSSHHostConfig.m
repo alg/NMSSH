@@ -17,7 +17,7 @@
             [deduped addObject:object];
         }
     }
-    return [deduped copy];
+    return deduped;
 }
 
 - (NSArray *)mergedArray:(NSArray *)firstArray withArray:(NSArray *)secondArray {
@@ -39,6 +39,16 @@
     }
     [self setIdentityFiles:[self mergedArray:self.identityFiles
                                    withArray:other.identityFiles]];
+}
+
+- (void)dealloc
+{
+    self.hostPatterns = nil;
+    self.hostname = nil;
+    self.user = nil;
+    self.port = nil;
+    self.identityFiles = nil;
+    [super dealloc];
 }
 
 @end

@@ -24,7 +24,7 @@
 }
 
 + (instancetype)fileWithName:(NSString *)filename {
-    return [[self alloc] initWithFilename:filename];
+    return [[[self alloc] initWithFilename:filename] autorelease];
 }
 
 - (void)populateValuesFromSFTPAttributes:(LIBSSH2_SFTP_ATTRIBUTES)fileAttributes {
@@ -158,11 +158,11 @@
     NMSFTPFile *object = [[[self class] allocWithZone:zone] init];
 
     if (object) {
-        object.filename = [self.filename copyWithZone:zone];
-        object.modificationDate = [self.modificationDate copyWithZone:zone];
-        object.lastAccess = [self.lastAccess copyWithZone:zone];
-        object.fileSize = [self.fileSize copyWithZone:zone];
-        object.permissions = [self.fileSize copyWithZone:zone];
+        object.filename = [[self.filename copyWithZone:zone] autorelease];
+        object.modificationDate = [[self.modificationDate copyWithZone:zone] autorelease];
+        object.lastAccess = [[self.lastAccess copyWithZone:zone] autorelease];
+        object.fileSize = [[self.fileSize copyWithZone:zone] autorelease];
+        object.permissions = [[self.fileSize copyWithZone:zone] autorelease];
         object.isDirectory = self.isDirectory;
         object.ownerUserID = self.ownerUserID;
         object.ownerGroupID = self.ownerGroupID;
@@ -170,6 +170,16 @@
     }
 
     return object;
+}
+
+- (void)dealloc
+{
+    self.modificationDate = nil;
+    self.filename = nil;
+    self.lastAccess = nil;
+    self.fileSize = nil;
+    self.permissions = nil;
+    [super dealloc];
 }
 
 @end

@@ -14,6 +14,8 @@
         yaml = [YAMLSerialization YAMLWithStream:stream
                                          options:kYAMLReadOptionStringScalars
                                            error:nil];
+        [yaml retain];
+        [stream release];
     }
 
     id data = [yaml objectAtIndex:0];
